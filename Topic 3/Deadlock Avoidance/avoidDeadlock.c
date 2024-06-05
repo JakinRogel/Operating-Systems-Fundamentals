@@ -2,81 +2,53 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <semaphore.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
+#include <pthread.h>
 #include <time.h>
 #include <errno.h>
 
 #define LOG_FILE "activity_log.txt"
 
 // Global variables
-sem_t* semaphore;
+pthread_mutex_t mutex;
 FILE* log_file;
 
+// Structure to pass data to threads
+typedef struct {
+    int thread_id;
+} thread_data_t;
+
+// Signal handler for timeout
 void signalHandler(int signum) {
-    fprintf(log_file, "Process %d: Timed out. Releasing the file.\n", getpid());
-    sem_post(semaphore); // Release the semaphore
+    fprintf(log_file, "Thread %ld: Timed out. Releasing the file.\n", pthread_self());
+    pthread_mutex_unlock(&mutex); // Release the mutex
+    pthread_exit(NULL); // Exit the thread
 }
 
-void childProcess() {
-    // Child process tries to access the resource
+// Thread function
+void* threadFunction(void* arg) {
+    thread_data_t* data = (thread_data_t*) arg;
+    int thread_id = data->thread_id;
+    fprintf(log_file, "\n\n\n           *** NEW LOG ***\n");
     for (int i = 0; i < 4; ++i) {
-        fprintf(log_file, "Child Process (%d): Trying to access the file...\n", getpid());
+        fprintf(log_file, "Thread %d: Trying to access the file...\n", thread_id);
+
         signal(SIGALRM, signalHandler); // Set up signal handler for SIGALRM
-        
 
-        if (sem_wait(semaphore) == -1) {
-            if (errno == EINTR) {
-                // Timer interrupted the wait operation, continue to next iteration
-                continue;
-            } else {
-                perror("sem_wait");
-                exit(EXIT_FAILURE);
-            }
-        }
-        
-        fprintf(log_file, "Child Process (%d): file acquired successfully!\n", getpid());
-        alarm(3); // Set a timer of 5 seconds
-        int work_time = rand() % 6 + 1; // Generate random work time
-        fprintf(log_file, "Child Process (%d): Working for %d seconds...\n", getpid(), work_time);
-        sleep(work_time); // Simulate some work with the resource
-        sem_post(semaphore); // Release the semaphore
-        alarm(0); // Cancel the alarm
-    }
-    fprintf(log_file, "Child Process finished...\n");
-    exit(EXIT_SUCCESS); // Exit the child process
-}
-
-void parentProcess() {
-    // Parent process tries to access the resource
-    for (int i = 0; i < 4; ++i) {
-        fprintf(log_file, "Parent Process (%d): Trying to access the file...\n", getpid());
-        signal(SIGALRM, signalHandler); // Set up signal handler for SIGALRM
-        
-
-        if (sem_wait(semaphore) == -1) {
-            if (errno == EINTR) {
-                // Timer interrupted the wait operation, continue to next iteration
-                continue;
-            } else {
-                perror("sem_wait");
-                exit(EXIT_FAILURE);
-            }
+        if (pthread_mutex_lock(&mutex) != 0) {
+            perror("pthread_mutex_lock");
+            pthread_exit(NULL);
         }
 
-        fprintf(log_file, "Parent Process (%d): file acquired successfully!\n", getpid());
-        alarm(3); // Set a timer of 5 seconds
+        fprintf(log_file, "Thread %d: file acquired successfully!\n", thread_id);
+        alarm(3); // Set a timer of 3 seconds
         int work_time = rand() % 6 + 1; // Generate random work time
-        fprintf(log_file, "Parent Process (%d): Working for %d seconds...\n", getpid(), work_time);
+        fprintf(log_file, "Thread %d: Working for %d seconds...\n", thread_id, work_time);
         sleep(work_time); // Simulate some work with the resource
-        sem_post(semaphore); // Release the semaphore
+        pthread_mutex_unlock(&mutex); // Release the mutex
         alarm(0); // Cancel the alarm
     }
-    fprintf(log_file, "Parent Process finished...\n");
-    sleep(4);
-    exit(EXIT_SUCCESS); // Exit the parent process
+    fprintf(log_file, "Thread %d finished...\n", thread_id);
+    pthread_exit(NULL);
 }
 
 int main() {
@@ -90,39 +62,33 @@ int main() {
     // Seed the random number generator
     srand(time(NULL));
 
-    // Create shared semaphore
-    semaphore = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (semaphore == MAP_FAILED) {
-        perror("Semaphore creation failed");
+    // Initialize mutex
+    if (pthread_mutex_init(&mutex, NULL) != 0) {
+        perror("Mutex initialization failed");
         exit(EXIT_FAILURE);
     }
 
-    // Initialize semaphore
-    if (sem_init(semaphore, 1, 1) != 0) {
-        perror("Semaphore initialization failed");
-        exit(EXIT_FAILURE);
+    // Create threads
+    pthread_t threads[2];
+    thread_data_t thread_data[2];
+    for (int i = 0; i < 2; ++i) {
+        thread_data[i].thread_id = i + 1;
+        if (pthread_create(&threads[i], NULL, threadFunction, &thread_data[i]) != 0) {
+            perror("Thread creation failed");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    // Fork child process
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("Fork failed");
-        exit(EXIT_FAILURE);
-    } else if (pid == 0) { // Child process
-        childProcess();
-    } else { // Parent process
-        parentProcess();
+    // Wait for threads to finish
+    for (int i = 0; i < 2; ++i) {
+        pthread_join(threads[i], NULL);
     }
 
     // Clean up
     fprintf(log_file, "Clean up started........\n");
-    // Clean up semaphore
-    if (sem_destroy(semaphore) != 0) {
-        perror("Semaphore destruction failed\n");
-        exit(EXIT_FAILURE);
-    }
-    if (munmap(semaphore, sizeof(sem_t)) != 0) {
-        perror("Semaphore memory unmapping failed\n");
+    // Destroy mutex
+    if (pthread_mutex_destroy(&mutex) != 0) {
+        perror("Mutex destruction failed\n");
         exit(EXIT_FAILURE);
     }
     // Close log file
