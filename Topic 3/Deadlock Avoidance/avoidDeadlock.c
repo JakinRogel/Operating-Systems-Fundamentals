@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #define LOG_FILE "activity_log.txt" // Define the log file name
 
@@ -19,6 +20,23 @@ typedef struct {
     int thread_id; // Thread ID
 } thread_data_t;
 
+// Function to log messages with timestamps
+void log_with_timestamp(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    time_t now;
+    time(&now);
+    struct tm* local = localtime(&now);
+
+    pthread_mutex_lock(&log_mutex);
+    fprintf(log_file, "[%02d:%02d] ", local->tm_min, local->tm_sec);
+    vfprintf(log_file, format, args);
+    pthread_mutex_unlock(&log_mutex);
+
+    va_end(args);
+}
+
 // Thread function
 void* threadFunction(void* arg) {
     thread_data_t* data = (thread_data_t*) arg; // Cast argument to thread_data_t
@@ -26,9 +44,7 @@ void* threadFunction(void* arg) {
     int acquired = 0; // Flag to indicate if resource was acquired
 
     for (int i = 0; i < 4; ++i) { // Loop to simulate multiple attempts to access the resource
-        pthread_mutex_lock(&log_mutex); // Lock log mutex
-        fprintf(log_file, "Thread %d: Trying to access the file...\n", thread_id); // Log attempt to access file
-        pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+        log_with_timestamp("Thread %d: Trying to access the file...\n", thread_id); // Log attempt to access file
 
         pthread_mutex_lock(&mutex); // Lock resource mutex
         while (!resource_available) { // While resource is not available
@@ -38,15 +54,11 @@ void* threadFunction(void* arg) {
 
             int res = pthread_cond_timedwait(&cond, &mutex, &ts); // Wait for condition with timeout
             if (res == ETIMEDOUT) { // If timed out
-                pthread_mutex_lock(&log_mutex); // Lock log mutex
-                fprintf(log_file, "Thread %d: Timed out. Failed to acquire the file. Retrying...\n", thread_id); // Log timeout
-                pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+                log_with_timestamp("Thread %d: Timed out. Failed to acquire the file. Retrying...\n", thread_id); // Log timeout
                 acquired = 0; // Reset acquired flag
                 break; // Exit while loop to retry
             } else { // If signaled
-                pthread_mutex_lock(&log_mutex); // Lock log mutex
-                fprintf(log_file, "Thread %d: Waiting for file access...\n", thread_id); // Log waiting
-                pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+                log_with_timestamp("Thread %d: Waiting for file access...\n", thread_id); // Log waiting
             }
         }
 
@@ -54,18 +66,14 @@ void* threadFunction(void* arg) {
             resource_available = 0; // Mark resource as not available
             acquired = 1; // Set acquired flag
 
-            pthread_mutex_lock(&log_mutex); // Lock log mutex
-            fprintf(log_file, "Thread %d: file acquired successfully!\n", thread_id); // Log successful acquisition
-            pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+            log_with_timestamp("Thread %d: file acquired successfully!\n", thread_id); // Log successful acquisition
         }
 
         pthread_mutex_unlock(&mutex); // Unlock resource mutex
 
         if (acquired) { // If resource was acquired
             int work_time = rand() % 6 + 1; // Generate random work time
-            pthread_mutex_lock(&log_mutex); // Lock log mutex
-            fprintf(log_file, "Thread %d: Working for %d seconds...\n", thread_id, work_time); // Log work time
-            pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+            log_with_timestamp("Thread %d: Working for %d seconds...\n", thread_id, work_time); // Log work time
 
             sleep(work_time); // Simulate work with the resource
 
@@ -74,18 +82,14 @@ void* threadFunction(void* arg) {
             pthread_cond_signal(&cond); // Signal other threads waiting for the resource
             pthread_mutex_unlock(&mutex); // Unlock resource mutex
 
-            pthread_mutex_lock(&log_mutex); // Lock log mutex
-            fprintf(log_file, "Thread %d: Released the file.\n", thread_id); // Log resource release
-            pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+            log_with_timestamp("Thread %d: Released the file.\n", thread_id); // Log resource release
 
             acquired = 0; // Reset acquired flag
             sleep(3); // Give time for other thread to acquire the resource
         }
     }
 
-    pthread_mutex_lock(&log_mutex); // Lock log mutex
-    fprintf(log_file, "Thread %d finished...\n", thread_id); // Log thread completion
-    pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+    log_with_timestamp("Thread %d finished...\n", thread_id); // Log thread completion
 
     pthread_exit(NULL); // Exit thread
 }
@@ -98,6 +102,7 @@ int main() {
         exit(EXIT_FAILURE); // Exit program
     }
     fprintf(log_file, "\n\n         ***NEW LOG*** \n"); // Log new session start
+
     // Seed the random number generator
     srand(time(NULL));
 
@@ -134,9 +139,7 @@ int main() {
     }
 
     // Clean up
-    pthread_mutex_lock(&log_mutex); // Lock log mutex
-    fprintf(log_file, "Clean up started........\n"); // Log cleanup start
-    pthread_mutex_unlock(&log_mutex); // Unlock log mutex
+    log_with_timestamp("Clean up started........\n"); // Log cleanup start
 
     // Destroy mutexes and condition variable
     if (pthread_mutex_destroy(&mutex) != 0) { // Destroy resource mutex
@@ -160,8 +163,8 @@ int main() {
     // Log clean up finished
     log_file = fopen(LOG_FILE, "a"); // Reopen log file to log cleanup completion
     if (log_file != NULL) { // Check if log file opened successfully
-        fprintf(log_file, "Clean up finished........\n"); // Log cleanup completion
-        fprintf(log_file, "Program complete.\n"); // Log program completion
+        log_with_timestamp("Clean up finished........\n"); // Log cleanup completion
+        log_with_timestamp("Program complete.\n"); // Log program completion
         fclose(log_file); // Close log file
     } else { // If failed to reopen log file
         perror("Failed to reopen log file"); // Print error
