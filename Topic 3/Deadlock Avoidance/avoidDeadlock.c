@@ -25,8 +25,6 @@ void* threadFunction(void* arg) {
     int thread_id = data->thread_id;
     int acquired = 0;
 
-    fprintf(log_file, "\n\n\n           *** NEW LOG ***\n");
-
     for (int i = 0; i < 4; ++i) {
         pthread_mutex_lock(&log_mutex);
         fprintf(log_file, "Thread %d: Trying to access the file...\n", thread_id);
@@ -41,8 +39,9 @@ void* threadFunction(void* arg) {
             int res = pthread_cond_timedwait(&cond, &mutex, &ts);
             if (res == ETIMEDOUT) {
                 pthread_mutex_lock(&log_mutex);
-                fprintf(log_file, "Thread %d: Timed out. Releasing the file.\n", thread_id);
+                fprintf(log_file, "Thread %d: Timed out. Failed to acquire the file.\n", thread_id);
                 pthread_mutex_unlock(&log_mutex);
+                acquired = 0;  // Make sure acquired is set to 0 on timeout
                 break;
             }
         }
@@ -50,14 +49,15 @@ void* threadFunction(void* arg) {
         if (resource_available) {
             resource_available = 0;
             acquired = 1;
-        }
-        pthread_mutex_unlock(&mutex);
 
-        if (acquired) {
             pthread_mutex_lock(&log_mutex);
             fprintf(log_file, "Thread %d: file acquired successfully!\n", thread_id);
             pthread_mutex_unlock(&log_mutex);
+        }
 
+        pthread_mutex_unlock(&mutex);
+
+        if (acquired) {
             int work_time = rand() % 6 + 1; // Generate random work time
             pthread_mutex_lock(&log_mutex);
             fprintf(log_file, "Thread %d: Working for %d seconds...\n", thread_id, work_time);
@@ -152,10 +152,15 @@ int main() {
     // Close log file
     fclose(log_file);
 
-    pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "Clean up finished........\n");
-    fprintf(log_file, "Program complete.\n");
-    pthread_mutex_unlock(&log_mutex);
+    // Log clean up finished
+    log_file = fopen(LOG_FILE, "a");
+    if (log_file != NULL) {
+        fprintf(log_file, "Clean up finished........\n");
+        fprintf(log_file, "Program complete.\n");
+        fclose(log_file);
+    } else {
+        perror("Failed to reopen log file");
+    }
 
     return 0;
 }
