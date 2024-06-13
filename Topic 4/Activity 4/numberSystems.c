@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 // Function prototypes
-void printBinary(int num);
-void printHexadecimal(int num);
+void printBinary(int num);         // Function to print binary representation of a number
+void printHexadecimal(int num);    // Function to print hexadecimal representation of a number
 
 int main() {
     int num;
@@ -20,9 +20,9 @@ int main() {
     printHexadecimal(num);
 
     // Perform bitwise operations
-    int shifted = num << 10;
-    int masked = shifted & ~0x3FF;
-    int result = masked | 0x3FF;
+    int shifted = num << 10;        // Shift num 10 bits to the left
+    int masked = shifted & ~0x3FF;  // Mask out the lower 10 bits of shifted
+    int result = masked | 0x3FF;    // OR the masked value with 0x3FF
 
     // Print results of bitwise operations
     printf("\nAfter shifting 10 bits to the left, masking and OR-ing with 0x3FF:\n");
@@ -35,13 +35,15 @@ int main() {
     return 0;
 }
 
+// Function to print binary representation of a number
 void printBinary(int num) {
     for (int i = 31; i >= 0; i--) {
-        printf("%d", (num >> i) & 1);
+        printf("%d", (num >> i) & 1);  // Print each bit from MSB to LSB
     }
     printf("\n");
 }
 
+// Function to print hexadecimal representation of a number
 void printHexadecimal(int num) {
-    printf("0x%X\n", num);
+    printf("0x%X\n", num);  // Print number in hexadecimal format
 }
