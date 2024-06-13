@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #define PAGE_TABLE_SIZE 256  // Size of the page table
-#define PAGE_SIZE_4K 4096
-#define PAGE_SIZE_8K 8192
+#define PAGE_SIZE_4K 4095
+#define PAGE_SIZE_8K 8191
 
 unsigned int page_table[PAGE_TABLE_SIZE];
 
@@ -34,7 +34,7 @@ void initialize_page_table(unsigned int page_size) {
     for (int i = 0; i < PAGE_TABLE_SIZE; i++) {
         if (frame_address < 0x00080000) {  // Physical memory size of 512K bytes
             page_table[i] = frame_address;
-            frame_address += page_size;
+            frame_address += page_size + 1; // Increment by page_size + 1 for correct page size
         }
     }
 }
@@ -44,7 +44,7 @@ int main() {
     unsigned int virtual_address, physical_address;
     unsigned int page_number, offset;
 
-    printf("Enter page size (4096 for 4K or 8192 for 8K): ");
+    printf("Enter page size (4095 for 4K or 8191 for 8K): ");
     scanf("%u", &page_size);
 
     if (page_size != PAGE_SIZE_4K && page_size != PAGE_SIZE_8K) {
@@ -63,8 +63,8 @@ int main() {
         printf("Enter a virtual memory address (in hexadecimal): ");
         scanf("%x", &virtual_address);
 
-        page_number = virtual_address / page_size;
-        offset = virtual_address % page_size;
+        page_number = virtual_address / (page_size + 1); // Correct division for page size
+        offset = virtual_address % (page_size + 1); // Correct modulo for page size
 
         if (page_table[page_number] == 0xFFFFFFFF) {
             printf("Virtual address 0x%X is currently on Disk.\n", virtual_address);
