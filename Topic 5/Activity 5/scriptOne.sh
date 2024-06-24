@@ -14,3 +14,5 @@ elif [ $number -eq 50 ]; then
 else
     echo "The number is greater than 50"
 fi
+
+# ALL CODE DONE BY JAKIN ROGEL
