@@ -1,0 +1,17 @@
+total 172
+-rwxrwx--- 1 root vboxsf 16480 May 30 21:06 MSLq2
+-rwxrwx--- 1 root vboxsf 16368 May 30 21:11 MSLq3
+-rwxrwx--- 1 root vboxsf 16432 May 30 21:18 MSLq4
+-rwxrwx--- 1 root vboxsf  1180 May 30 21:16 MSLq4.c
+drwxrwx--- 1 root vboxsf  4096 Jun  1 20:21 Mutexes and Semaphores
+-rwxrwx--- 1 root vboxsf     0 Jun 30  2024 myfiles.txt
+drwxrwx--- 1 root vboxsf  4096 Jun  1 19:18 Producer Consumer
+-rwxrwx--- 1 root vboxsf 16256 May 29 11:57 question2
+-rwxrwx--- 1 root vboxsf   821 May 29 11:53 question2.c
+-rwxrwx--- 1 root vboxsf 16328 May 29 16:11 question3
+-rwxrwx--- 1 root vboxsf   990 May 29 16:09 question3.c
+-rwxrwx--- 1 root vboxsf 16392 May 30 17:06 signalsInLinux
+-rwxrwx--- 1 root vboxsf  1369 May 30 17:03 signalsInLinux.c
+-rwxrwx--- 1 root vboxsf 16392 May 30 17:04 singalsInLinux
+-rwxrwx--- 1 root vboxsf 16288 May 30 17:38 threadsInLinux
+-rwxrwx--- 1 root vboxsf  1144 May 30 17:35 threadsInLinux.c
