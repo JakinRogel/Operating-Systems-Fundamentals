@@ -1,5 +1,5 @@
 #!/bin/bash
-NAME="YourName"
-AGE="YourAge"
+NAME="Jakin Rogel"
+AGE="26"
 echo "Name: $NAME"
 echo "Age: $AGE"
