@@ -1,6 +1,8 @@
 #!/bin/bash
 echo "Current directory: $(pwd)"
 cd ~
-cd <child_directory>  # Replace <child_directory> with the actual directory name
+cd /media/sf_Operating-Systems-Fundamentals/Topic\ 2
 ls *.c
 cd ~
+echo "Current directory: $(pwd)"
+
